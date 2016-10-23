@@ -1,14 +1,13 @@
 ﻿open System.IO
 open System
 
-
+//QUESTION : quantile
 
 let readFile (filePath:string) = seq {
     use sr = new StreamReader (filePath)
     while not sr.EndOfStream do
         yield sr.ReadLine ()
 }
-
 
 //let rec qsort pred xs =
 //  match xs with
@@ -22,13 +21,15 @@ let genRandom =
     let r = Random()  
     Seq.initInfinite (fun _ -> r.NextDouble() |> double)
 
-let mean (xs:seq<double>) =   
-    Seq.sum xs 
+let mean (xs:seq<double>) = 
+    xs  
+    |>Seq.sum  
     |> (*) (1.0 / double (Seq.length xs)) 
     |> double
 
 let dispersion xs = 
-    Seq.map (fun x -> (x - (mean xs))**2.0) xs 
+    xs
+    |> Seq.map (fun x -> (x - (mean xs))**2.0)  
     |> Seq.sum 
     |> (*) (1.0 / double ((Seq.length xs) - 1)) 
     |> double
@@ -46,18 +47,22 @@ let quantile (a:double) (xs:seq<double>) =
         |> (*) a 
         |> Math.Floor 
         |> int
+        |> (fun i -> if i-1 < 0  then (Seq.length xs) - 1 else i)
 
     if (a < 0.0 || a > 1.0) 
     then raise (new Exception("incorrect percentile")) 
-    else 
+    else
     xs 
     |> Seq.sort 
     |> fun(ys) -> 
         if (Seq.length ys) % 2 = 0 
         then (((Seq.item index ys) + (Seq.item (index-1) ys)) / 2.0)
         else (Seq.item index ys)
+    |> Math.Ceiling
+    |> double
 
-let count (xs:seq<double>) (x:double) = Seq.fold (fun a b -> if b = x then a + 1 else a) 0 xs
+let count (xs:seq<double>) (x:double) = 
+    Seq.fold (fun a b -> if b = x then a + 1 else a) 0 xs
 
 let moda (xs:seq<double>) = 
     Seq.groupBy (fun x -> count xs x) xs
@@ -66,8 +71,12 @@ let moda (xs:seq<double>) =
     |> fun (c, ys) -> Seq.distinct ys
 
 
-let minimum (xs:seq<double>) = Seq.reduce (fun x y -> if x < y then x else y) xs
-let maximum (xs:seq<double>) = Seq.reduce (fun x y -> if x > y then x else y) xs
+let minimum (xs:seq<double>) = 
+    Seq.reduce (fun x y -> if x < y then x else y) xs
+
+let maximum (xs:seq<double>) = 
+    Seq.reduce (fun x y -> if x > y then x else y) xs
+
 let range (xs:seq<double>) = (maximum xs) - (minimum xs)
 
 let funs = [
@@ -78,7 +87,7 @@ let funs = [
     ("Максимум", maximum);
     ("Минимум", minimum);
     ("Размах", range);
-    ("Квантиль 0.1", quantile 0.5);
+    ("Квантиль 0.1", quantile 0.1);
     ("Квантиль 0.25", quantile 0.25);
     ("Квантиль 0.5", quantile 0.5);
     ("Квантиль 0.75", quantile 0.75);    
@@ -86,14 +95,22 @@ let funs = [
 
 [<EntryPoint>]
 let main argv = 
-    readFile "data.txt"
-    |> ignore
+    let data0 = readFile "data.txt"
+    let data1 = [3; 6; 7; 8; 8; 10; 13; 15; 16; 20]
+    let data2 = [1;2]
+    let data3 = genRandom |> Seq.take 10000
 
-    let data = [3; 6; 7; 8; 8; 10; 13; 15; 16; 20] |> Seq.map double
+    let data = 
+        data3 
+        |> Seq.map double 
+        |> Seq.map (fun x -> Math.Round(x,3))
+        //*Very important* convert random Seq to List:
+        |> Seq.toList
 
     printfn "Последовательность: %A" (Seq.toList data)
     printfn "Мода: %A" (moda data)
     data |> fun xs -> Seq.iter (fun (desc, f) -> printfn "%A : %A" desc (f xs) ) funs 
+    printfn "----------------\nЗавершено"
     
 
     Console.ReadLine() |> ignore

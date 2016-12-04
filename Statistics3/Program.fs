@@ -34,8 +34,8 @@ let count step (xs:float list) =
 
 let flattenTuples tuples = List.collect (fun (a,b) -> [a;b]) tuples 
 
-
-let uniformDistribution a b n = [for x in 1 .. n do yield R() * (b - a) + a ]
+let _uniform a b = R() * (b - a) + a
+let uniformDistribution a b n = [for x in 1 .. n do yield _uniform a b ]
 
 
 let _centralLimit() = List.sum [for x in 1 .. 12 do yield R() ] - 6.0
@@ -57,6 +57,7 @@ let boxMuller n =
     |> flattenTuples
     |> List.map (fun x -> 0.5 + x / 10.0)
 
+let _exponential a b = -Math.Log(_uniform a b)
 
 //!!!!!!WTF!!!!!!!
 let exponential n = 
@@ -65,6 +66,59 @@ let exponential n =
     |> List.filter (fun x -> x <= 1.0 )
 //!!!!!WTF!!!!!!!!
 
+let (stairWidth : float array) = Array.zeroCreate 257
+let (stairHeight : float array) = Array.zeroCreate 256
+
+let x1 = 3.6541528853610088;
+let A = 4.92867323399e-3;
+
+let STEPS = pown 10 3
+
+let MAX_RAND = pown 10 9 |> float
+
+let setupBoxes() = 
+    stairHeight.[0] <- Math.Exp(-0.5 * x1 * x1)
+    stairWidth.[0] <- A / stairHeight.[0];
+    stairWidth.[256] <- 0.0;
+    for i in 1..255 do
+        stairWidth.[i] <- Math.Sqrt(-2.0 * Math.Log(stairHeight.[i - 1]));
+        stairHeight.[i] <- stairHeight.[i - 1] + (A / stairWidth.[i]);
+
+
+let rec _normalZiggurat iter (x:float) = 
+    if iter > STEPS - 1 then x 
+    else
+        let mutable B = _uniform 0.0 MAX_RAND |> int
+        let mutable stairId = B &&& 255
+        let mutable x = _uniform 0.0 stairWidth.[stairId]
+
+        if (x < stairWidth.[stairId + 1])
+        then if B > (MAX_RAND / 2.0 |> int) then _normalZiggurat STEPS (-1.0 * x) else _normalZiggurat STEPS x
+        else if stairId = 0 then
+            let mutable z = -1.0
+            let mutable y = 0.0
+            if z > 0.0 then
+                x <- _exponential 0.0 x1
+                z <- z - 0.5 * x * x
+            else if z <= 0.0 then
+                while z <= 0.0 do
+                    x <- _exponential 0.0 x1
+                    y <- _exponential 0.0 1.0
+                    z <- y - 0.5 * x * x
+            x <- x + x1
+            if B > (MAX_RAND / 2.0 |> int) then _normalZiggurat STEPS (-1.0 * x) else _normalZiggurat STEPS x
+        else if (_uniform stairHeight.[stairId - 1] stairHeight.[stairId]) < Math.Exp(-0.5 * x * x) then
+            if B > (MAX_RAND / 2.0 |> int) then _normalZiggurat STEPS (-1.0 * x) else _normalZiggurat STEPS x
+        else
+            _normalZiggurat (iter + 1) x
+
+let rec __normalZiggurat() = _normalZiggurat 0 0.0
+          
+let normalZiggurat n = 
+    setupBoxes()
+    [for x in 1 .. n do yield __normalZiggurat() ]
+    |> List.map (fun x -> 0.5 + x / 10.0 )
+    |> List.filter (fun x -> x <= 1.0 && x >= 0.0)
 
 let countPlot step size name func = 
     let data = 
@@ -92,10 +146,10 @@ let allPlot step size name func =
 
 [<EntryPoint>]
 let rec main argv = 
-    let size = 80000
+    let size = 100000
     let step = 0.01    
     //printfn "%A" ((List.min (exponential size)))
-    //printfn "%A" ((List.max (exponential size)) )
+    //printfn "%A" data
     //Console.ReadKey();
-    countPlot step size "Exponential" exponential
+    countPlot step size "Ziggurat" normalZiggurat
     0

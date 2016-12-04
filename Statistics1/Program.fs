@@ -1,5 +1,6 @@
 ﻿open System.IO
 open System
+open System.Diagnostics;
 
 //QUESTION : quantile
 
@@ -115,4 +116,6 @@ let main argv =
 
     Console.ReadLine() |> ignore
     0 
+
+
 

@@ -2,28 +2,41 @@
 open System.Windows.Forms
 open System.Windows.Forms.DataVisualization.Charting
 
-type LineChartForm( title, xs : (float*float) seq ) =
+type ChartForm( title, xtitle, ytitle, ptype:SeriesChartType, xs : (float*float) seq ) =
     inherit Form( Text=title )
 
     let chart = new Chart(Dock=DockStyle.Fill)
     let area = new ChartArea(Name="Area1")
     let series = new Series()
-    do series.ChartType <- SeriesChartType.Line
+    do series.ChartType <- ptype
     do xs |> Seq.iter (series.Points.AddXY >> ignore)
     do series.ChartArea <- "Area1"
+
+    do area.AxisX.Title <- xtitle
+    do area.AxisY.Title <- ytitle
+
     do chart.Series.Add( series )
     do chart.ChartAreas.Add(area)
     do base.Controls.Add( chart )
+    
 
 
 let R = (new Random()).NextDouble
 
+let count step (xs:float list) = 
+    let min = List.min xs |> Math.Floor
+    let max = List.max xs |> Math.Ceiling
+    [min .. step .. max - step] 
+        |> List.map (fun s -> s, List.filter (fun x -> x >= s && x <= s + step) xs |> List.length |> float)
 
 let flattenTuples tuples = List.collect (fun (a,b) -> [a;b]) tuples 
 
+
+let uniformDistribution a b n = [for x in 1 .. n do yield R() * (b - a) + a ]
+
+
 let centralLimit (r:unit -> float) = 
     ([for x in 1 .. 12 do yield r() ] |> List.sum) - 6.0
-
 
 
 let rec _boxMuller (r:unit -> float) = 
@@ -37,28 +50,41 @@ let rec _boxMuller (r:unit -> float) =
 
 let boxMuller n = flattenTuples [for x in 1 .. n / 2 do yield _boxMuller R ]
 
-let count step (xs:float list) = 
-    let min = List.min xs |> Math.Floor
-    let max = List.max xs |> Math.Ceiling
-    [min .. step .. max - step] 
-        |> List.map (fun s -> s, List.filter (fun x -> x >= s && x <= s + step) xs |> List.length |> float)
 
-let gaussian mean dev = 
-    let theta = 2.0 * Math.PI * R()
-    let rho = Math.Sqrt(-2.0 * Math.Log(1.0 - R()))
-    let scale = dev * rho
-    let x = mean + scale * Math.Cos(theta)
-    let y = mean + scale * Math.Sin(theta)
-    x, y
+let exponential n = [for x in 1 .. n / 2 do yield -Math.Log(R()) ]
 
+
+
+
+let countPlot step size name func = 
+    let data = 
+        func size 
+        |> count step
+    let f = new ChartForm( 
+                    name + " " + step.ToString(), 
+                    "Count",                    
+                    "Value",
+                    SeriesChartType.Line,
+                    data)
+    Application.Run(f)
+
+
+let allPlot step size name func =
+    let data = func size |> List.mapi (fun i x -> (x, i |> float))
+    let f = new ChartForm( 
+                    name + " " + step.ToString(), 
+                    "Index",                    
+                    "Value",
+                    SeriesChartType.Point,
+                    data)
+    Application.Run(f)
 
 
 [<EntryPoint>]
 let rec main argv = 
-    //let data = seq { for i in 1..1000 do yield sin(float i / 100.0) }
-    let data1 = 
-        boxMuller 50000 
-        |> count 0.05
-    let f = new LineChartForm( "Sine", data1 )
-    Application.Run(f)
+    let size = 1000
+    let step = 0.1
+    countPlot step size "Gaussian" boxMuller
+    //gaussianPlot step size
+
     0

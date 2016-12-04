@@ -1,6 +1,8 @@
 ﻿open System
 open System.Windows.Forms
 open System.Windows.Forms.DataVisualization.Charting
+open System.Diagnostics
+
 
 type ChartForm( title, xtitle, ytitle, ptype:SeriesChartType, xs : (float*float) seq ) =
     inherit Form( Text=title )
@@ -147,9 +149,10 @@ let allPlot step size name func =
 [<EntryPoint>]
 let rec main argv = 
     let size = 100000
-    let step = 0.01    
-    //printfn "%A" ((List.min (exponential size)))
-    //printfn "%A" data
-    //Console.ReadKey();
+    let step = 0.005    
     countPlot step size "Ziggurat" normalZiggurat
+    countPlot step size "Box-Muller" boxMuller
+    countPlot step size "Central limit theorem" centralLimit
+    countPlot step size "Uniform " (uniformDistribution 10.0 20.0)
+    countPlot step size "Exponential " exponential
     0

@@ -104,15 +104,15 @@ let rec _boxMuller() =
     let t = Math.Sqrt(-2.0 * Math.Log(s) / s)
     x * t, y * t 
 
-let boxMuller sigma mu n = 
+let boxMuller n = 
     [for x in 1 .. n / 2 do yield _boxMuller() ] 
     |> flattenTuples
     |> List.map (fun x -> mu + x * sigma)
 
 let _exponential a b = -Math.Log(_uniform a b)
 
-//!!!
-let exponential lambda n = 
+//!!!!!!WTF!!!!!!!
+let exponential n = 
     uniformDistribution 0.0 1.0 n 
     |> List.map (fun x -> -Math.Log(x) / lambda )
     |> List.filter (fun x -> x <= 1.0 )

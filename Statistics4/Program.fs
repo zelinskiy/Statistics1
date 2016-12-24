@@ -41,30 +41,36 @@ let GD:int -> float -> (float*float) seq -> (float*float) = _GD 0.0 0.0
 let lincor X Y = 
     let mx = Seq.average X
     let my = Seq.average Y
-    let a =Seq.sumBy (fun (x, y) -> (x-mx) * (y-my)) (Seq.zip X Y)
-    let b1 = Math.Sqrt(Seq.sumBy (fun x -> (x - mx) ** 2.0 ) X)
-    let b2 = Math.Sqrt(Seq.sumBy (fun y -> (y - my) ** 2.0 ) Y)
-    a / (b1 * b2)
+    let cov = Seq.sumBy (fun (x, y) -> (x-mx) * (y-my)) (Seq.zip X Y)
+    let s1 = Math.Sqrt(Seq.sumBy (fun x -> (x - mx) ** 2.0 ) X)
+    let s2 = Math.Sqrt(Seq.sumBy (fun y -> (y - my) ** 2.0 ) Y)
+    cov / (s1 * s2)
 
-let determ h data =
-    let mean = Seq.averageBy snd data
-    let SSres = Seq.sumBy (fun d -> (h(fst d) - mean) ** 2.0) data
-    let SStot = Seq.sumBy (fun d -> ((fst d) - mean) ** 2.0) data
-    Math.Sqrt(SSres / SStot)
+let determ Y _Y =
+    let m = Seq.average Y
+    let RSS = Seq.sumBy (fun (y, _y) -> (y - _y) ** 2.0) (Seq.zip Y _Y)
+    let TSS = Seq.sumBy (fun y -> (y - m) ** 2.0) _Y
+    printfn "%A %A" RSS TSS 
+    Math.Sqrt(1.0 - (RSS/TSS))
 
 let test i = 
     let alpha = 0.00001
-    let iters = 500
-    let X = LINENORMAL
-    let Xx = Seq.map fst X
-    let Xy = Seq.map snd X
+    let iters = 100
+    let X = HEIGHTS
     let Y = []
     let tetas = (GD iters alpha) X
     let t0 = fst tetas
     let t1 = snd tetas
     let h = H t0 t1
+
+    let real = Seq.map snd X
+    let explained = Seq.map (fst>>h) X 
+    
+    let r = (lincor real explained)
+    let R = (determ real explained)
+    
     printfn "theta0 = %A; theta1 = %A" t0 t1
-    printfn "corr = %A; deter = %A" (lincor Xx Xy) (determ h X)
+    printfn "corr = %A; deter = %A" r R 
     let f = new ChartForm(  
                     "X",                    
                     "Y",

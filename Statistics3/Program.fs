@@ -42,9 +42,9 @@ let uniformDistribution a b n = [for x in 1 .. n do yield _uniform a b ]
 
 let _centralLimit() = List.sum [for x in 1 .. 12 do yield R() ] - 6.0
 
-let centralLimit n = 
+let centralLimit mu sigma n = 
     [for x in 1 .. n do yield _centralLimit() ] 
-    |> List.map (fun x -> 0.5 + x / 10.0)
+    |> List.map (fun x -> mu + x * sigma )
 
 let rec _boxMuller() = 
     let x = R() * (if R() > 0.5 then 1.0 else -1.0)
@@ -54,17 +54,17 @@ let rec _boxMuller() =
     let t = Math.Sqrt(-2.0 * Math.Log(s) / s)
     x * t, y * t 
 
-let boxMuller n = 
+let boxMuller mu sigma n = 
     [for x in 1 .. n / 2 do yield _boxMuller() ] 
     |> flattenTuples
-    |> List.map (fun x -> 0.5 + x / 10.0)
+    |> List.map (fun x -> mu + x * sigma)
 
 let _exponential a b = -Math.Log(_uniform a b)
 
 //!!!!!!WTF!!!!!!!
-let exponential n = 
+let exponential  n = 
     uniformDistribution 0.0 1.0 n 
-    |> List.map (fun x -> -Math.Log(x) / 4.0 )
+    |> List.map (fun x -> -Math.Log(x) * 0.1)
     |> List.filter (fun x -> x <= 1.0 )
 //!!!!!WTF!!!!!!!!
 
@@ -116,11 +116,10 @@ let rec _normalZiggurat iter (x:float) =
 
 let rec __normalZiggurat() = _normalZiggurat 0 0.0
           
-let normalZiggurat n = 
+let normalZiggurat mu sigma n = 
     setupBoxes()
     [for x in 1 .. n do yield __normalZiggurat() ]
-    |> List.map (fun x -> 0.5 + x / 10.0 )
-    |> List.filter (fun x -> x <= 1.0 && x >= 0.0)
+    |> List.map (fun x -> mu + x * sigma )
 
 let countPlot step size name func = 
     let data = 
@@ -149,10 +148,10 @@ let allPlot step size name func =
 [<EntryPoint>]
 let rec main argv = 
     let size = 100000
-    let step = 0.005    
-    countPlot step size "Ziggurat" normalZiggurat
-    countPlot step size "Box-Muller" boxMuller
-    countPlot step size "Central limit theorem" centralLimit
-    countPlot step size "Uniform " (uniformDistribution 10.0 20.0)
-    countPlot step size "Exponential " exponential
+    let step = 0.01    
+    countPlot step size "Ziggurat" (normalZiggurat 0.0 1.0)
+    countPlot step size "Box-Muller"(boxMuller 0.0 1.0)
+    countPlot step size "Central limit theorem" (centralLimit 0.0 1.0)
+    //countPlot step size "Uniform " (uniformDistribution 10.0 20.0)
+    //countPlot step size "Exponential " exponential 
     0

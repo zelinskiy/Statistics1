@@ -9,6 +9,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Statistics2", "Statistics2\
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Statistics3", "Statistics3\Statistics3.fsproj", "{4FC3A049-3758-41F3-B083-F7DF44B95FF0}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Statistics4", "Statistics4\Statistics4.fsproj", "{4F3DF7DE-EAF3-4B30-9976-A0CA57C4F3F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{4FC3A049-3758-41F3-B083-F7DF44B95FF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4FC3A049-3758-41F3-B083-F7DF44B95FF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4FC3A049-3758-41F3-B083-F7DF44B95FF0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F3DF7DE-EAF3-4B30-9976-A0CA57C4F3F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F3DF7DE-EAF3-4B30-9976-A0CA57C4F3F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F3DF7DE-EAF3-4B30-9976-A0CA57C4F3F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F3DF7DE-EAF3-4B30-9976-A0CA57C4F3F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

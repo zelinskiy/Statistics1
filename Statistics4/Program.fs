@@ -38,29 +38,49 @@ let rec _GD t0 t1 i alpha (data: (float*float) seq) =
 
 let GD:int -> float -> (float*float) seq -> (float*float) = _GD 0.0 0.0
 
+let lincor X Y = 
+    let mx = Seq.average X
+    let my = Seq.average Y
+    let a =Seq.sumBy (fun (x, y) -> (x-mx) * (y-my)) (Seq.zip X Y)
+    let b1 = Math.Sqrt(Seq.sumBy (fun x -> (x - mx) ** 2.0 ) X)
+    let b2 = Math.Sqrt(Seq.sumBy (fun y -> (y - my) ** 2.0 ) Y)
+    a / (b1 * b2)
+
+let determ h data =
+    let mean = Seq.averageBy snd data
+    let SSres = Seq.sumBy (fun d -> (h(fst d) - mean) ** 2.0) data
+    let SStot = Seq.sumBy (fun d -> ((fst d) - mean) ** 2.0) data
+    Math.Sqrt(SSres / SStot)
 
 let test i = 
     let alpha = 0.00001
-    let iters = 300
-    let X = PRESSURE
+    let iters = 500
+    let X = LINENORMAL
+    let Xx = Seq.map fst X
+    let Xy = Seq.map snd X
     let Y = []
     let tetas = (GD iters alpha) X
     let t0 = fst tetas
     let t1 = snd tetas
-    printfn "%A %A" t0 t1
+    let h = H t0 t1
+    printfn "theta0 = %A; theta1 = %A" t0 t1
+    printfn "corr = %A; deter = %A" (lincor Xx Xy) (determ h X)
     let f = new ChartForm(  
-                    "Value",                    
-                    "Count",
+                    "X",                    
+                    "Y",
                     SeriesChartType.Point,
                     X,
                     Y,
                     H t0 t1)
     Application.Run(f)
 
+
+
 [<EntryPoint>]
 let main argv = 
-    
-    //printfn "%A" TITANIC        
+    //let X = Seq.map fst TITANIC
+    //let Y = Seq.map snd TITANIC
+    //printfn "%A" (lincor X X)
     test 1
     //Console.ReadKey()
     0 

@@ -14,6 +14,8 @@ let everyN n seq =
       |> Seq.filter (fun (el, i) -> i % n = n - 1)
       |> Seq.map fst  
 
+let LINENORMAL = [1.0 .. 1.01 .. 50.0] |> List.map (fun x -> (x, 5.0 + x*2.0))
+
 let TESTDATA1 = [
     1.0, 200.0;
     2.0, 250.0;

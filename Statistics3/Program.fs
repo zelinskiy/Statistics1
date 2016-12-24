@@ -4,7 +4,9 @@ open System.Windows.Forms.DataVisualization.Charting
 open System.Diagnostics
 
 
-type ChartForm( title, xtitle, ytitle, ptype:SeriesChartType, xs : (float*float) seq ) =
+type ChartForm( title, xtitle, ytitle, ptype:SeriesChartType,
+                            xs : (float*float) seq,
+                            realxs: (float*float) seq ) =
     inherit Form( Text=title )
 
     let chart = new Chart(Dock=DockStyle.Fill)
@@ -17,22 +19,70 @@ type ChartForm( title, xtitle, ytitle, ptype:SeriesChartType, xs : (float*float)
     do area.AxisX.Title <- xtitle
     do area.AxisY.Title <- ytitle
 
-    //do series.Points.AddXY(1.0, Seq.maxBy (fun (x, y) -> y) xs |> snd ) |> ignore
-    //do series.Points.AddXY(0.0, Seq.maxBy (fun (x, y) -> y) xs |> snd) |> ignore
-
     do chart.Series.Add( series )
     do chart.ChartAreas.Add(area)
+
+    let series2 = new Series()
+    do series2.ChartType <- SeriesChartType.Line
+    do realxs |> Seq.iter (series2.Points.AddXY >> ignore)
+    do series2.ChartArea <- "Area1"
+
+
+    do chart.Series.Add( series2 )
+
+
     do base.Controls.Add( chart )
     
 
+let erf (_x:float) =
+    let a1 = 0.254829592
+    let a2 = -0.284496736
+    let a3 = 1.421413741
+    let a4 = -1.453152027
+    let a5 = 1.061405429
+    let p = 0.3275911
+
+    let sign = Math.Sign _x
+    let x = Math.Abs _x
+    let t = 1.0 / (1.0 + p*x)
+    let y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.Exp(-x*x);
+    (float sign) * y
+
 
 let R = (new Random()).NextDouble
+
+let pureGauss sigma mu (x:float) = 
+    (1.0/(sigma * Math.Sqrt(2.0 * Math.PI))) *
+    Math.Pow(Math.E, ((-1.0 * (x - mu) * (x - mu)) / (2.0 * sigma * sigma)))
+
+let generatePureGauss sigma mu a b step = [for x in a..step..b do yield (x, pureGauss sigma mu x)]
+
+let generatePureExponential lambda a b (step:float) = 
+    [for x in (a + step)..step..(b - step) do yield (x, 1.0 - Math.Pow(Math.E, -lambda * x) )]
+
+let generatePureNormal sigma mu a b (step:float) = 
+    [for x in (a + step)..step..(b - step) do yield (x, 0.5 * (1.0 + (erf ((x - mu) / Math.Sqrt(2.0 * sigma * sigma) )) ) )]
+
 
 let count step (xs:float list) = 
     let min = List.min xs |> Math.Floor
     let max = List.max xs |> Math.Ceiling
     [min .. step .. max] 
-        |> List.map (fun s -> s, List.filter (fun x -> x >= s && x <= s + step) xs |> List.length |> float)
+        |> List.map (fun s -> s, 
+            (List.filter (fun x -> x >= s && x <= s + step) xs 
+                |> List.length 
+                |> float) )
+
+let summa step (xs:float list) = 
+    let min = List.min xs |> Math.Floor
+    let max = List.max xs |> Math.Ceiling
+    [min .. step .. max] 
+        |> List.map (fun s -> s, 
+                                xs
+                                |> List.filter (fun x -> x >= s && x <= s + step)
+                                |> List.map Math.Abs
+                                |> List.sum)
+
 
 let flattenTuples tuples = List.collect (fun (a,b) -> [a;b]) tuples 
 
@@ -42,9 +92,9 @@ let uniformDistribution a b n = [for x in 1 .. n do yield _uniform a b ]
 
 let _centralLimit() = List.sum [for x in 1 .. 12 do yield R() ] - 6.0
 
-let centralLimit n = 
+let centralLimit sigma mu n = 
     [for x in 1 .. n do yield _centralLimit() ] 
-    |> List.map (fun x -> 0.5 + x / 10.0)
+    |> List.map (fun x -> mu + x * sigma)
 
 let rec _boxMuller() = 
     let x = R() * (if R() > 0.5 then 1.0 else -1.0)
@@ -54,19 +104,18 @@ let rec _boxMuller() =
     let t = Math.Sqrt(-2.0 * Math.Log(s) / s)
     x * t, y * t 
 
-let boxMuller n = 
+let boxMuller sigma mu n = 
     [for x in 1 .. n / 2 do yield _boxMuller() ] 
     |> flattenTuples
-    |> List.map (fun x -> 0.5 + x / 10.0)
+    |> List.map (fun x -> mu + x * sigma)
 
 let _exponential a b = -Math.Log(_uniform a b)
 
-//!!!!!!WTF!!!!!!!
-let exponential n = 
+//!!!
+let exponential lambda n = 
     uniformDistribution 0.0 1.0 n 
-    |> List.map (fun x -> -Math.Log(x) / 4.0 )
+    |> List.map (fun x -> -Math.Log(x) / lambda )
     |> List.filter (fun x -> x <= 1.0 )
-//!!!!!WTF!!!!!!!!
 
 let (stairWidth : float array) = Array.zeroCreate 257
 let (stairHeight : float array) = Array.zeroCreate 256
@@ -95,7 +144,9 @@ let rec _normalZiggurat iter (x:float) =
         let mutable x = _uniform 0.0 stairWidth.[stairId]
 
         if (x < stairWidth.[stairId + 1])
-        then if B > (MAX_RAND / 2.0 |> int) then _normalZiggurat STEPS (-1.0 * x) else _normalZiggurat STEPS x
+        then if B > (MAX_RAND / 2.0 |> int) 
+                    then _normalZiggurat STEPS (-1.0 * x) 
+                    else _normalZiggurat STEPS x
         else if stairId = 0 then
             let mutable z = -1.0
             let mutable y = 0.0
@@ -108,21 +159,62 @@ let rec _normalZiggurat iter (x:float) =
                     y <- _exponential 0.0 1.0
                     z <- y - 0.5 * x * x
             x <- x + x1
-            if B > (MAX_RAND / 2.0 |> int) then _normalZiggurat STEPS (-1.0 * x) else _normalZiggurat STEPS x
+            if B > (MAX_RAND / 2.0 |> int) 
+                then _normalZiggurat STEPS (-1.0 * x) 
+                else _normalZiggurat STEPS x
         else if (_uniform stairHeight.[stairId - 1] stairHeight.[stairId]) < Math.Exp(-0.5 * x * x) then
-            if B > (MAX_RAND / 2.0 |> int) then _normalZiggurat STEPS (-1.0 * x) else _normalZiggurat STEPS x
+            if B > (MAX_RAND / 2.0 |> int) 
+                then _normalZiggurat STEPS (-1.0 * x) 
+                else _normalZiggurat STEPS x
         else
             _normalZiggurat (iter + 1) x
 
 let rec __normalZiggurat() = _normalZiggurat 0 0.0
           
-let normalZiggurat n = 
+let normalZiggurat sigma mu n = 
     setupBoxes()
     [for x in 1 .. n do yield __normalZiggurat() ]
-    |> List.map (fun x -> 0.5 + x / 10.0 )
-    |> List.filter (fun x -> x <= 1.0 && x >= 0.0)
+    |> List.map (fun x -> mu + x * sigma )
 
-let countPlot step size name func = 
+
+let funcPlot step (size:int) name func realfunc coeff= 
+    let data = 
+        func size 
+        |> List.sort
+        |> List.mapi (fun i x -> (x, (float i) / (float size)))    
+    
+    let realData = 
+        realfunc (List.min data |> fst) (List.max data |> fst) step
+        |> Seq.toList
+
+    let f = new ChartForm( 
+                    name + " " + step.ToString(), 
+                    "Value",                    
+                    "Count",
+                    SeriesChartType.Point,
+                    data,
+                    realData
+                    )
+    Application.Run(f)
+
+let func1Plot step (size:int) name func= 
+    let data = 
+        func size 
+        |> List.sort
+        |> List.mapi (fun i x -> (x, (float i) / (float size)))    
+    
+    let f = new ChartForm( 
+                    name + " " + step.ToString(), 
+                    "Value",                    
+                    "Count",
+                    SeriesChartType.Point,
+                    data,
+                    []
+                    )
+    Application.Run(f)
+
+
+let countPlot step (size:int) name func= 
     let data = 
         func size 
         |> count step
@@ -131,28 +223,85 @@ let countPlot step size name func =
                     "Value",                    
                     "Count",
                     SeriesChartType.BoxPlot,
-                    data)
+                    data,
+                    [])
     Application.Run(f)
 
-
-let allPlot step size name func =
-    let data = func size |> List.mapi (fun i x -> (x, i |> float))
+let count2Plot step (size:int) name func realfunc coeff = 
+    let data = 
+        func size 
+        |> count step
+    let realData = 
+        realfunc (List.min data |> fst) (List.max data |> fst) step
+        |> Seq.toList
+        |> List.map (fun (x, y) -> (x, y * ((float size) * coeff)))
     let f = new ChartForm( 
                     name + " " + step.ToString(), 
                     "Value",                    
-                    "Index",
-                    SeriesChartType.Point,
-                    data)
+                    "Count",
+                    SeriesChartType.BoxPlot,
+                    data,
+                    realData
+                    )
     Application.Run(f)
+
+
+
+//let sumPlot step size name func realfunc = 
+//    let data = 
+//        func size 
+//        |> summa step
+//    let realData = 
+//        realfunc (List.min data |> fst) (List.max data |> fst) step 
+//        |> Seq.toList
+//        |> List.map (fun (x, y) -> (x, y * ((float size) / 200.0)))
+//    let f = new ChartForm( 
+//                    name + " " + step.ToString(), 
+//                    "Value",                    
+//                    "Sum",
+//                    SeriesChartType.BoxPlot,
+//                    data,
+//                    realData)
+//    Application.Run(f)
+
+
+//let allPlot step size name func realfunc =
+//    let data = func size |> List.mapi (fun i x -> (x, i |> float))
+//    let realData = 
+//        realfunc (List.min data |> fst) (List.max data |> fst) step 
+//        |> Seq.toList
+//        |> List.map (fun (x, y) -> (x, y * ((float size) / 200.0)))
+//    let f = new ChartForm( 
+//                    name + " " + step.ToString(), 
+//                    "Value",                    
+//                    "Index",
+//                    SeriesChartType.Point,
+//                    data,
+//                    realData)
+//    Application.Run(f)
+
 
 
 [<EntryPoint>]
 let rec main argv = 
-    let size = 100000
-    let step = 0.005    
-    countPlot step size "Ziggurat" normalZiggurat
-    countPlot step size "Box-Muller" boxMuller
-    countPlot step size "Central limit theorem" centralLimit
-    countPlot step size "Uniform " (uniformDistribution 10.0 20.0)
-    countPlot step size "Exponential " exponential
+    let size = 100
+    let step = 0.05
+    let sigma = 1.0
+    let mu = 0.0  
+    let lambda = 1.0
+    let a = 10.0
+    let b = 20.0
+    let func = true
+    if func then  
+        funcPlot step size "Ziggurat" (normalZiggurat sigma mu) (generatePureNormal sigma mu) step
+        funcPlot step size "Box-Muller" (boxMuller sigma mu) (generatePureNormal sigma mu) step
+        funcPlot step size "Central limit theorem" (centralLimit sigma mu) (generatePureNormal sigma mu) step
+        func1Plot step size "Uniform " (uniformDistribution 10.0 20.0)
+        funcPlot step size "Exponential " (exponential lambda) (generatePureExponential lambda) step
+    else
+        countPlot step size "Ziggurat" (normalZiggurat sigma mu)
+        countPlot step size "Box-Muller" (boxMuller sigma mu)
+        countPlot step size "Central limit theorem" (centralLimit sigma mu)
+        countPlot step size "Uniform " (uniformDistribution 10.0 20.0)
+        countPlot step size "Exponential " (exponential 10.0)
     0

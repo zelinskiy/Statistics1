@@ -27,6 +27,13 @@ let HEIGHTS =
     |> Seq.map(fun s -> s.Split '\t') 
     |> Seq.map (fun s ->(float s.[0], float s.[1]))
 
+let MATAN = 
+    readFile "matan.txt" 
+    |> Seq.map(fun s -> s.Split '\t') 
+    |> Seq.map (fun s ->(float s.[0], float s.[1]))
+
+
+
 let DOWJONES = 
     readFile "dowjones.txt" 
     |> Seq.map(fun s -> s.Split '\t') 
@@ -68,4 +75,6 @@ let PRESSURE =
 let MURDERS = 
     readFile "murders.txt" 
     |> Seq.map(fun s -> s.Split '\t') 
-    |> Seq.map (fun s ->(float s.[2], float s.[3]))
+    |> Seq.map (fun s ->(float s.[3], float s.[4]))
+
+let ALLDATASETS = [MURDERS; PRESSURE; HEIGHTS]

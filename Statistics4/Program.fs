@@ -53,10 +53,10 @@ let determ Y _Y =
     printfn "%A %A" RSS TSS 
     Math.Sqrt(1.0 - (RSS/TSS))
 
-let test i = 
-    let alpha = 0.00001
-    let iters = 100
-    let X = HEIGHTS
+let test dataset =
+    let alpha = 0.1
+    let iters = 1000
+    let X = dataset
     let Y = []
     let tetas = (GD iters alpha) X
     let t0 = fst tetas
@@ -84,9 +84,5 @@ let test i =
 
 [<EntryPoint>]
 let main argv = 
-    //let X = Seq.map fst TITANIC
-    //let Y = Seq.map snd TITANIC
-    //printfn "%A" (lincor X X)
-    test 1
-    //Console.ReadKey()
+    test (rescale2 MATAN)
     0 
